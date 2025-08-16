@@ -1,0 +1,19 @@
+{
+  "b41b0813-e4b7-4bc5-8763-1887924af713": {
+    "id": "b41b0813-e4b7-4bc5-8763-1887924af713",
+    "name": "september",
+    "owner": "e917b11a-10c5-45de-bee1-cb9f73b769ad",
+    "collaborators": [],
+    "budget": 415000.0,
+    "transactions": [
+      {
+        "date": "2025-08-16 21:15",
+        "type": "expense",
+        "amount": 2555.0,
+        "description": "rrrr",
+        "added_by": "atariq6298"
+      }
+    ],
+    "created_at": "2025-08-16 21:14"
+  }
+}
