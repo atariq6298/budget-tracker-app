@@ -1,0 +1,11 @@
+{
+  "budget": 1000.0,
+  "transactions": [
+    {
+      "date": "2025-08-16 21:01",
+      "type": "expense",
+      "amount": 555.0,
+      "description": "No description"
+    }
+  ]
+}
