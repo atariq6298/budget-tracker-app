@@ -1,0 +1,269 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Budget Manager - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+        }
+
+        .user-info {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .create-budget-section {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .budgets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .budget-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+
+        .budget-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+
+        .budget-card h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.5em;
+        }
+
+        .budget-info {
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .budget-role {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        .role-owner {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .role-collaborator {
+            background: #2196F3;
+            color: white;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+            align-items: end;
+            flex-wrap: wrap;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        input[type="text"], input[type="number"] {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        input[type="text"]:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💰 Budget Manager</h1>
+            <div class="user-info">
+                Welcome, {{ user.username }}!
+            </div>
+        </div>
+
+        <div id="alertContainer"></div>
+
+        <div class="create-budget-section">
+            <h2>➕ Create New Budget</h2>
+            <form id="createBudgetForm">
+                <div class="form-row">
+                    <div>
+                        <label for="budgetName">Budget Name:</label>
+                        <input type="text" id="budgetName" placeholder="e.g., Personal Budget, Vacation Fund" required>
+                    </div>
+                    <div>
+                        <label for="initialAmount">Initial Amount:</label>
+                        <input type="number" id="initialAmount" step="0.01" placeholder="0.00">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create Budget</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="budgets-section">
+            <h2>📊 Your Budgets</h2>
+            <div class="budgets-grid">
+                {% for budget in budgets %}
+                <div class="budget-card" onclick="openBudget('{{ budget.id }}')">
+                    <h3>{{ budget.name }}</h3>
+                    <div class="budget-info">
+                        <div>Budget: ${{ "%.2f"|format(budget.budget) }}</div>
+                        <div>Owner: {{ budget.owner }}</div>
+                        {% if budget.collaborators %}
+                        <div>Collaborators: {{ budget.collaborators|join(', ') }}</div>
+                        {% endif %}
+                    </div>
+                    <span class="budget-role role-{{ budget.role }}">{{ budget.role|title }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('createBudgetForm').addEventListener('submit', createBudget);
+
+        async function createBudget(e) {
+            e.preventDefault();
+            const name = document.getElementById('budgetName').value;
+            const initialAmount = document.getElementById('initialAmount').value || 0;
+            
+            try {
+                const response = await fetch('/api/create_budget', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `name=${encodeURIComponent(name)}&initial_amount=${initialAmount}`
+                });
+                
+                const result = await response.json();
+                showAlert(result.message, result.success ? 'success' : 'error');
+                
+                if (result.success) {
+                    document.getElementById('budgetName').value = '';
+                    document.getElementById('initialAmount').value = '';
+                    setTimeout(() => location.reload(), 1000);
+                }
+            } catch (error) {
+                showAlert('Failed to create budget', 'error');
+            }
+        }
+
+        function openBudget(budgetId) {
+            window.location.href = `/budget/${budgetId}`;
+        }
+
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alertContainer');
+            alertContainer.innerHTML = `<div class="alert alert-${type}" style="display: block;">${message}</div>`;
+            setTimeout(() => {
+                alertContainer.innerHTML = '';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
