@@ -7,7 +7,7 @@ import uuid
 import bcrypt
 from email_validator import validate_email, EmailNotValidError
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 app.secret_key = 'your-secret-key-change-this-in-production'
 
 class BudgetManager:
