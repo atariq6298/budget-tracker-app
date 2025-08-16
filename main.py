@@ -4,9 +4,11 @@ import json
 import os
 from datetime import datetime
 import uuid
+import bcrypt
+from email_validator import validate_email, EmailNotValidError
 
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-change-this'
+app.secret_key = 'your-secret-key-change-this-in-production'
 
 class BudgetManager:
     def __init__(self):
@@ -46,14 +48,46 @@ class BudgetManager:
         except Exception as e:
             print(f"Failed to save data: {str(e)}")
 
-    def create_user(self, user_id, username):
-        if user_id not in self.users:
-            self.users[user_id] = {
-                'username': username,
-                'budgets': [],
-                'shared_budgets': []
-            }
-            self.save_data()
+    def register_user(self, email, username, password):
+        try:
+            # Validate email
+            validate_email(email)
+        except EmailNotValidError:
+            return {"success": False, "message": "Invalid email address!"}
+
+        # Check if email already exists
+        for user_data in self.users.values():
+            if user_data.get('email', '').lower() == email.lower():
+                return {"success": False, "message": "Email already registered!"}
+            if user_data.get('username', '').lower() == username.lower():
+                return {"success": False, "message": "Username already taken!"}
+
+        # Hash password
+        password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        
+        user_id = str(uuid.uuid4())
+        self.users[user_id] = {
+            'email': email.lower(),
+            'username': username,
+            'password_hash': password_hash,
+            'budgets': [],
+            'shared_budgets': [],
+            'created_at': datetime.now().strftime("%Y-%m-%d %H:%M")
+        }
+        self.save_data()
+        return {"success": True, "message": "Account created successfully!", "user_id": user_id}
+
+    def authenticate_user(self, email, password):
+        for user_id, user_data in self.users.items():
+            if user_data.get('email', '').lower() == email.lower():
+                if bcrypt.checkpw(password.encode('utf-8'), user_data['password_hash'].encode('utf-8')):
+                    return {"success": True, "user_id": user_id, "username": user_data['username']}
+                else:
+                    return {"success": False, "message": "Invalid password!"}
+        return {"success": False, "message": "Email not found!"}
+
+    def get_user_by_id(self, user_id):
+        return self.users.get(user_id)
 
     def create_budget(self, user_id, budget_name, initial_amount=0.0):
         budget_id = str(uuid.uuid4())
@@ -165,7 +199,7 @@ class BudgetManager:
                 balance -= transaction['amount']
         return balance
 
-    def invite_collaborator(self, budget_id, owner_id, collaborator_username):
+    def invite_collaborator(self, budget_id, owner_id, collaborator_email):
         if budget_id not in self.budgets:
             return {"success": False, "message": "Budget not found!"}
         
@@ -173,21 +207,23 @@ class BudgetManager:
         if budget['owner'] != owner_id:
             return {"success": False, "message": "Only the budget owner can invite collaborators!"}
         
-        # Find user by username
+        # Find user by email
         collaborator_id = None
+        collaborator_username = None
         for user_id, user_data in self.users.items():
-            if user_data['username'].lower() == collaborator_username.lower():
+            if user_data.get('email', '').lower() == collaborator_email.lower():
                 collaborator_id = user_id
+                collaborator_username = user_data['username']
                 break
         
         if not collaborator_id:
-            return {"success": False, "message": f"User '{collaborator_username}' not found!"}
+            return {"success": False, "message": f"User with email '{collaborator_email}' not found!"}
         
         if collaborator_id == owner_id:
             return {"success": False, "message": "You cannot invite yourself!"}
         
         if collaborator_id in budget['collaborators']:
-            return {"success": False, "message": f"User '{collaborator_username}' is already a collaborator!"}
+            return {"success": False, "message": f"User '{collaborator_email}' is already a collaborator!"}
         
         # Add collaborator
         self.budgets[budget_id]['collaborators'].append(collaborator_id)
@@ -216,12 +252,10 @@ class BudgetManager:
 budget_manager = BudgetManager()
 
 def get_current_user():
-    user_id = request.headers.get('X-Replit-User-Id')
-    username = request.headers.get('X-Replit-User-Name')
-    
-    if user_id and username:
-        budget_manager.create_user(user_id, username)
-        return {'id': user_id, 'username': username}
+    user_id = session.get('user_id')
+    if user_id and user_id in budget_manager.users:
+        user_data = budget_manager.users[user_id]
+        return {'id': user_id, 'username': user_data['username'], 'email': user_data['email']}
     return None
 
 @app.route('/')
@@ -233,17 +267,64 @@ def index():
     user_budgets = budget_manager.get_user_budgets(user['id'])
     return render_template('dashboard.html', user=user, budgets=user_budgets)
 
+@app.route('/register')
+def register_page():
+    if get_current_user():
+        return redirect(url_for('index'))
+    return render_template('register.html')
+
+@app.route('/login')
+def login_page():
+    if get_current_user():
+        return redirect(url_for('index'))
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login_page'))
+
 @app.route('/budget/<budget_id>')
 def budget_detail(budget_id):
     user = get_current_user()
     if not user:
-        return redirect(url_for('index'))
+        return redirect(url_for('login_page'))
     
     budget_data = budget_manager.get_budget_data(budget_id, user['id'])
     if not budget_data:
         return "Budget not found or access denied", 404
     
     return render_template('budget.html', user=user, budget=budget_data)
+
+@app.route('/api/register', methods=['POST'])
+def register():
+    email = request.form.get('email', '').strip()
+    username = request.form.get('username', '').strip()
+    password = request.form.get('password', '')
+    
+    if not email or not username or not password:
+        return jsonify({"success": False, "message": "All fields are required!"})
+    
+    if len(password) < 6:
+        return jsonify({"success": False, "message": "Password must be at least 6 characters long!"})
+    
+    result = budget_manager.register_user(email, username, password)
+    return jsonify(result)
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    email = request.form.get('email', '').strip()
+    password = request.form.get('password', '')
+    
+    if not email or not password:
+        return jsonify({"success": False, "message": "Email and password are required!"})
+    
+    result = budget_manager.authenticate_user(email, password)
+    if result['success']:
+        session['user_id'] = result['user_id']
+        session['username'] = result['username']
+    
+    return jsonify(result)
 
 @app.route('/api/create_budget', methods=['POST'])
 def create_budget():
@@ -303,8 +384,8 @@ def invite_collaborator(budget_id):
     if not user:
         return jsonify({"success": False, "message": "Authentication required!"})
     
-    username = request.form.get('username')
-    result = budget_manager.invite_collaborator(budget_id, user['id'], username)
+    email = request.form.get('email')
+    result = budget_manager.invite_collaborator(budget_id, user['id'], email)
     return jsonify(result)
 
 if __name__ == '__main__':

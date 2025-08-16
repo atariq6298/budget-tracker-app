@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -320,8 +319,8 @@
                 <form id="inviteForm">
                     <div class="form-row">
                         <div>
-                            <label for="collaboratorUsername">Replit Username:</label>
-                            <input type="text" id="collaboratorUsername" placeholder="Enter username" required>
+                            <label for="collaboratorEmail">Email:</label>
+                            <input type="email" id="collaboratorEmail" placeholder="Enter email" required>
                         </div>
                         <button type="submit" class="btn btn-warning">Send Invite</button>
                     </div>
@@ -359,7 +358,33 @@
         document.getElementById('budgetForm').addEventListener('submit', setBudget);
         document.getElementById('transactionForm').addEventListener('submit', addTransaction);
         {% if budget.is_owner %}
-        document.getElementById('inviteForm').addEventListener('submit', inviteCollaborator);
+        // Invite collaborator
+        document.getElementById('inviteForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('collaboratorEmail').value.trim();
+            if (!email) return;
+
+            const formData = new FormData();
+            formData.append('email', email);
+
+            try {
+                const response = await fetch(`/api/budget/${budgetId}/invite`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                showAlert(result.message, result.success ? 'success' : 'error');
+
+                if (result.success) {
+                    document.getElementById('collaboratorEmail').value = '';
+                    loadData(); // Re-fetch data to show updated collaborators if needed
+                }
+            } catch (error) {
+                showAlert('Error inviting collaborator', 'error');
+            }
+        });
         {% endif %}
 
         async function loadData() {
@@ -375,17 +400,17 @@
         async function setBudget(e) {
             e.preventDefault();
             const amount = document.getElementById('budgetAmount').value;
-            
+
             try {
                 const response = await fetch(`/api/budget/${budgetId}/set_budget`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: `amount=${amount}`
                 });
-                
+
                 const result = await response.json();
                 showAlert(result.message, result.success ? 'success' : 'error');
-                
+
                 if (result.success) {
                     document.getElementById('budgetAmount').value = '';
                     loadData();
@@ -400,17 +425,17 @@
             const amount = document.getElementById('amount').value;
             const description = document.getElementById('description').value;
             const type = document.querySelector('input[name="transactionType"]:checked').value;
-            
+
             try {
                 const response = await fetch(`/api/budget/${budgetId}/add_transaction`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: `amount=${amount}&description=${encodeURIComponent(description)}&type=${type}`
                 });
-                
+
                 const result = await response.json();
                 showAlert(result.message, result.success ? 'success' : 'error');
-                
+
                 if (result.success) {
                     document.getElementById('amount').value = '';
                     document.getElementById('description').value = '';
@@ -421,43 +446,18 @@
             }
         }
 
-        {% if budget.is_owner %}
-        async function inviteCollaborator(e) {
-            e.preventDefault();
-            const username = document.getElementById('collaboratorUsername').value;
-            
-            try {
-                const response = await fetch(`/api/budget/${budgetId}/invite`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `username=${encodeURIComponent(username)}`
-                });
-                
-                const result = await response.json();
-                showAlert(result.message, result.success ? 'success' : 'error');
-                
-                if (result.success) {
-                    document.getElementById('collaboratorUsername').value = '';
-                    setTimeout(() => location.reload(), 1000);
-                }
-            } catch (error) {
-                showAlert('Failed to send invite', 'error');
-            }
-        }
-        {% endif %}
-
         function updateDisplay() {
             // Update budget and balance
             document.getElementById('budgetDisplay').textContent = `Budget: $${data.budget.toFixed(2)}`;
-            
+
             const balanceElement = document.getElementById('balanceDisplay');
             balanceElement.textContent = `Remaining Balance: $${data.balance.toFixed(2)}`;
             balanceElement.className = `balance-amount ${data.balance >= 0 ? 'balance-positive' : 'balance-negative'}`;
-            
+
             // Update transactions table
             const tbody = document.getElementById('transactionsBody');
             tbody.innerHTML = '';
-            
+
             data.transactions.forEach(transaction => {
                 const row = tbody.insertRow();
                 row.innerHTML = `

@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -181,8 +180,9 @@
     <div class="container">
         <div class="header">
             <h1>💰 Budget Manager</h1>
-            <div class="user-info">
-                Welcome, {{ user.username }}!
+            <div class="header-content">
+                <p>Welcome back, {{ user.username }}!</p>
+                <a href="/logout" class="logout-btn">Logout</a>
             </div>
         </div>
 
@@ -232,17 +232,17 @@
             e.preventDefault();
             const name = document.getElementById('budgetName').value;
             const initialAmount = document.getElementById('initialAmount').value || 0;
-            
+
             try {
                 const response = await fetch('/api/create_budget', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: `name=${encodeURIComponent(name)}&initial_amount=${initialAmount}`
                 });
-                
+
                 const result = await response.json();
                 showAlert(result.message, result.success ? 'success' : 'error');
-                
+
                 if (result.success) {
                     document.getElementById('budgetName').value = '';
                     document.getElementById('initialAmount').value = '';
