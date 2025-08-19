@@ -4,7 +4,7 @@ tracking budget and recording transactions
 
 import toga
 from toga.style import Pack
-from toga.style.pack import COLUMN, ROW
+from toga.style.pack import COLUMN
 import requests
 
 
@@ -31,7 +31,7 @@ class BudgetTracker(toga.App):
         self.password_input = password_input
         self.main_window.content = self.login_box
 
-    def handle_login(self, widget):
+    def handle_login(self, _widget):
         # Placeholder: Accept any login
         self.user = self.email_input.value
         self.show_dashboard()
@@ -43,7 +43,7 @@ class BudgetTracker(toga.App):
         add_transaction_button = toga.Button('Add Transaction', on_press=self.show_add_transaction)
         budget_items = []
         for idx, budget in enumerate(self.budgets):
-            budget_button = toga.Button(f"{budget['name']} (${budget['budget']})", on_press=lambda w, i=idx: self.show_budget_detail(i))
+            budget_button = toga.Button(f"{budget['name']} (${budget['budget']})", on_press=lambda _w, i=idx: self.show_budget_detail(i))
             budget_items.append(budget_button)
         budgets_box = toga.Box(children=budget_items, style=Pack(direction=COLUMN, padding=5))
         self.dashboard_box = toga.Box(children=[
@@ -71,7 +71,7 @@ class BudgetTracker(toga.App):
     def show_budget_detail(self, idx):
         budget = self.budgets[idx]
         budget_label = toga.Label(f"Budget: {budget['name']} (${budget['amount']})")
-        back_button = toga.Button('Back', on_press=lambda w: self.show_dashboard())
+        back_button = toga.Button('Back', on_press=lambda _w: self.show_dashboard())
         transactions_label = toga.Label('Transactions:')
         transaction_items = []
         for t in self.transactions:
@@ -85,11 +85,11 @@ class BudgetTracker(toga.App):
         ], style=Pack(direction=COLUMN, padding=10))
         self.main_window.content = budget_detail_box
 
-    def show_add_budget(self, widget):
+    def show_add_budget(self, _widget):
         budget_name_input = toga.TextInput(placeholder='Budget Name')
         initial_amount_input = toga.TextInput(placeholder='Initial Amount')
-        save_button = toga.Button('Save', on_press=lambda w: self.save_budget(budget_name_input.value, initial_amount_input.value))
-        back_button = toga.Button('Back', on_press=lambda w: self.show_dashboard())
+        save_button = toga.Button('Save', on_press=lambda _w: self.save_budget(budget_name_input.value, initial_amount_input.value))
+        back_button = toga.Button('Back', on_press=lambda _w: self.show_dashboard())
         add_budget_box = toga.Box(children=[
             toga.Label('Add New Budget'),
             budget_name_input,
@@ -103,11 +103,11 @@ class BudgetTracker(toga.App):
         self.budgets.append({'name': name, 'amount': amount})
         self.show_dashboard()
 
-    def show_add_transaction(self, widget):
+    def show_add_transaction(self, _widget):
         amount_input = toga.TextInput(placeholder='Amount')
         description_input = toga.TextInput(placeholder='Description')
-        save_button = toga.Button('Save', on_press=lambda w: self.save_transaction(amount_input.value, description_input.value))
-        back_button = toga.Button('Back', on_press=lambda w: self.show_dashboard())
+        save_button = toga.Button('Save', on_press=lambda _w: self.save_transaction(amount_input.value, description_input.value))
+        back_button = toga.Button('Back', on_press=lambda _w: self.show_dashboard())
         add_transaction_box = toga.Box(children=[
             toga.Label('Add Transaction'),
             amount_input,

@@ -270,7 +270,7 @@ def index():
 def register_page():
     if get_current_user():
         return redirect(url_for('index'))
-    return render_template('register.html')
+    return render_template('login.html')
 
 @app.route('/login')
 def login_page():
