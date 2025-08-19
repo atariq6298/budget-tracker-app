@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 import json
 import os
@@ -387,6 +386,24 @@ def invite_collaborator(budget_id):
     email = request.form.get('email')
     result = budget_manager.invite_collaborator(budget_id, user['id'], email)
     return jsonify(result)
+
+@app.route('/api/budgets', methods=['GET'])
+def get_user_budgets_api():
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "Authentication required!"}), 401
+    budgets = budget_manager.get_user_budgets(user['id'])
+    # Only return summary info for each budget
+    budget_list = [
+        {
+            'id': b['id'],
+            'name': b['name'],
+            'budget': b['budget'],
+            'balance': budget_manager.calculate_balance(b['id'])
+        }
+        for b in budgets
+    ]
+    return jsonify({"budgets": budget_list})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
