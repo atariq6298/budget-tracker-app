@@ -1,6 +1,5 @@
 
 from PIL import Image, ImageDraw
-import os
 
 def create_icon(size, filename):
     # Create a simple icon with gradient background
