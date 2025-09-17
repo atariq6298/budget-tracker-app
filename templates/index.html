@@ -173,6 +173,32 @@
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
 
+        .btn-small {
+            padding: 5px 10px;
+            margin: 2px;
+            border: none;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-edit {
+            background: linear-gradient(135deg, #FFC107 0%, #FF8F00 100%);
+            color: white;
+        }
+
+        .btn-delete {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+            color: white;
+        }
+
+        .btn-small:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
         .transactions-table {
             width: 100%;
             border-collapse: collapse;
@@ -339,6 +365,7 @@
                             <th>Amount</th>
                             <th>Description</th>
                             <th>Added By</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="transactionsBody">
@@ -402,22 +429,37 @@
             const type = document.querySelector('input[name="transactionType"]:checked').value;
             
             try {
-                const response = await fetch(`/api/budget/${budgetId}/add_transaction`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `amount=${amount}&description=${encodeURIComponent(description)}&type=${type}`
-                });
+                let response;
+                if (editingTransactionId) {
+                    // Update existing transaction
+                    response = await fetch(`/api/budget/${budgetId}/update_transaction/${editingTransactionId}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `amount=${amount}&description=${encodeURIComponent(description)}&type=${type}`
+                    });
+                } else {
+                    // Add new transaction
+                    response = await fetch(`/api/budget/${budgetId}/add_transaction`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `amount=${amount}&description=${encodeURIComponent(description)}&type=${type}`
+                    });
+                }
                 
                 const result = await response.json();
                 showAlert(result.message, result.success ? 'success' : 'error');
                 
                 if (result.success) {
-                    document.getElementById('amount').value = '';
-                    document.getElementById('description').value = '';
+                    if (editingTransactionId) {
+                        cancelEdit(); // Reset form state
+                    } else {
+                        document.getElementById('amount').value = '';
+                        document.getElementById('description').value = '';
+                    }
                     loadData();
                 }
             } catch (error) {
-                showAlert('Failed to add transaction', 'error');
+                showAlert('Failed to save transaction', 'error');
             }
         }
 
@@ -458,7 +500,7 @@
             const tbody = document.getElementById('transactionsBody');
             tbody.innerHTML = '';
             
-            data.transactions.forEach(transaction => {
+            data.transactions.forEach((transaction, index) => {
                 const row = tbody.insertRow();
                 row.innerHTML = `
                     <td>${transaction.date}</td>
@@ -466,6 +508,10 @@
                     <td class="transaction-${transaction.type}">$${transaction.amount.toFixed(2)}</td>
                     <td>${transaction.description}</td>
                     <td>${transaction.added_by || 'Unknown'}</td>
+                    <td>
+                        <button onclick="editTransaction(${index})" class="btn-small btn-edit">✏️ Edit</button>
+                        <button onclick="deleteTransaction('${transaction.id}')" class="btn-small btn-delete">🗑️ Delete</button>
+                    </td>
                 `;
             });
         }
@@ -476,6 +522,81 @@
             setTimeout(() => {
                 alertContainer.innerHTML = '';
             }, 5000);
+        }
+
+        // Global variable to track editing transaction
+        let editingTransactionId = null;
+
+        function editTransaction(transactionIndex) {
+            const transaction = data.transactions[transactionIndex];
+            editingTransactionId = transaction.id;
+            
+            // Fill the form with current values
+            document.getElementById('amount').value = transaction.amount;
+            document.getElementById('description').value = transaction.description;
+            document.querySelector(`input[name="transactionType"][value="${transaction.type}"]`).checked = true;
+            
+            // Change the button text and form behavior
+            const submitButton = document.querySelector('#transactionForm button[type="submit"]');
+            submitButton.textContent = 'Update Transaction';
+            submitButton.classList.add('btn-warning');
+            submitButton.classList.remove('btn-secondary');
+            
+            // Add a cancel button
+            if (!document.getElementById('cancelEditBtn')) {
+                const cancelBtn = document.createElement('button');
+                cancelBtn.type = 'button';
+                cancelBtn.id = 'cancelEditBtn';
+                cancelBtn.className = 'btn btn-secondary';
+                cancelBtn.textContent = 'Cancel';
+                cancelBtn.onclick = cancelEdit;
+                submitButton.parentNode.appendChild(cancelBtn);
+            }
+            
+            // Scroll to form
+            document.getElementById('transactionForm').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function cancelEdit() {
+            editingTransactionId = null;
+            
+            // Reset form
+            document.getElementById('amount').value = '';
+            document.getElementById('description').value = '';
+            document.querySelector('input[name="transactionType"][value="expense"]').checked = true;
+            
+            // Reset button
+            const submitButton = document.querySelector('#transactionForm button[type="submit"]');
+            submitButton.textContent = 'Add Transaction';
+            submitButton.classList.add('btn-secondary');
+            submitButton.classList.remove('btn-warning');
+            
+            // Remove cancel button
+            const cancelBtn = document.getElementById('cancelEditBtn');
+            if (cancelBtn) {
+                cancelBtn.remove();
+            }
+        }
+
+        async function deleteTransaction(transactionId) {
+            if (!confirm('Are you sure you want to delete this transaction?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/budget/${budgetId}/delete_transaction/${transactionId}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                showAlert(result.message, result.success ? 'success' : 'error');
+                
+                if (result.success) {
+                    loadData();
+                }
+            } catch (error) {
+                showAlert('Failed to delete transaction', 'error');
+            }
         }
     </script>
 </body>
