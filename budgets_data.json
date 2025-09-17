@@ -15,5 +15,31 @@
       }
     ],
     "created_at": "2025-08-16 21:14"
+  },
+  "78779fad-291b-4093-9fa7-997f651bf9e3": {
+    "id": "78779fad-291b-4093-9fa7-997f651bf9e3",
+    "name": "Test Budget",
+    "owner": "dd904b38-48d7-48d6-bd0b-2bb687462249",
+    "collaborators": [],
+    "budget": 1000.0,
+    "transactions": [
+      {
+        "id": "eae59427-bd4f-4022-80c0-96dea7f58567",
+        "date": "2025-09-17 15:13",
+        "type": "expense",
+        "amount": 200.0,
+        "description": "Grocery shopping",
+        "added_by": "testuser"
+      },
+      {
+        "id": "3e114d4f-5c97-40d5-94b6-ac7a8dbad1ca",
+        "date": "2025-09-17 15:14",
+        "type": "income",
+        "amount": 500.0,
+        "description": "Salary bonus",
+        "added_by": "testuser"
+      }
+    ],
+    "created_at": "2025-09-17 15:09"
   }
 }

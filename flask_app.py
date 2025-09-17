@@ -171,6 +171,7 @@ class BudgetManager:
                 description = "No description"
 
             transaction = {
+                'id': str(uuid.uuid4()),
                 'date': datetime.now().strftime("%Y-%m-%d %H:%M"),
                 'type': transaction_type,
                 'amount': amount,
@@ -184,6 +185,60 @@ class BudgetManager:
 
         except ValueError:
             return {"success": False, "message": "Please enter a valid amount!"}
+
+    def update_transaction(self, budget_id, user_id, transaction_id, amount, description, transaction_type):
+        budget = self.get_budget(budget_id, user_id)
+        if not budget:
+            return {"success": False, "message": "Budget not found or access denied!"}
+        
+        try:
+            amount = float(amount)
+            description = description.strip()
+
+            if amount <= 0:
+                return {"success": False, "message": "Amount must be positive!"}
+
+            if not description:
+                description = "No description"
+
+            # Find the transaction to update
+            transaction_found = False
+            for transaction in self.budgets[budget_id]['transactions']:
+                if transaction.get('id') == transaction_id:
+                    transaction['amount'] = amount
+                    transaction['description'] = description
+                    transaction['type'] = transaction_type
+                    transaction['updated_at'] = datetime.now().strftime("%Y-%m-%d %H:%M")
+                    transaction_found = True
+                    break
+
+            if not transaction_found:
+                return {"success": False, "message": "Transaction not found!"}
+
+            self.save_data()
+            return {"success": True, "message": "Transaction updated successfully!"}
+
+        except ValueError:
+            return {"success": False, "message": "Please enter a valid amount!"}
+
+    def delete_transaction(self, budget_id, user_id, transaction_id):
+        budget = self.get_budget(budget_id, user_id)
+        if not budget:
+            return {"success": False, "message": "Budget not found or access denied!"}
+        
+        # Find and remove the transaction
+        transactions = self.budgets[budget_id]['transactions']
+        original_length = len(transactions)
+        
+        self.budgets[budget_id]['transactions'] = [
+            t for t in transactions if t.get('id') != transaction_id
+        ]
+        
+        if len(self.budgets[budget_id]['transactions']) == original_length:
+            return {"success": False, "message": "Transaction not found!"}
+        
+        self.save_data()
+        return {"success": True, "message": "Transaction deleted successfully!"}
 
     def calculate_balance(self, budget_id):
         if budget_id not in self.budgets:
@@ -375,6 +430,27 @@ def add_transaction(budget_id):
     description = request.form.get('description')
     transaction_type = request.form.get('type')
     result = budget_manager.add_transaction(budget_id, user['id'], amount, description, transaction_type)
+    return jsonify(result)
+
+@app.route('/api/budget/<budget_id>/update_transaction/<transaction_id>', methods=['POST'])
+def update_transaction(budget_id, transaction_id):
+    user = get_current_user()
+    if not user:
+        return jsonify({"success": False, "message": "Authentication required!"})
+    
+    amount = request.form.get('amount')
+    description = request.form.get('description')
+    transaction_type = request.form.get('type')
+    result = budget_manager.update_transaction(budget_id, user['id'], transaction_id, amount, description, transaction_type)
+    return jsonify(result)
+
+@app.route('/api/budget/<budget_id>/delete_transaction/<transaction_id>', methods=['DELETE'])
+def delete_transaction(budget_id, transaction_id):
+    user = get_current_user()
+    if not user:
+        return jsonify({"success": False, "message": "Authentication required!"})
+    
+    result = budget_manager.delete_transaction(budget_id, user['id'], transaction_id)
     return jsonify(result)
 
 @app.route('/api/budget/<budget_id>/invite', methods=['POST'])
